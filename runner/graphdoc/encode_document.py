@@ -9,15 +9,41 @@ from layoutlmft.models.graphdoc.configuration_graphdoc import GraphDocConfig
 from layoutlmft.models.graphdoc.modeling_graphdoc import GraphDocForEncode
 from transformers import AutoModel, AutoTokenizer
 
+##############
+# description of changes:
+# 1. add read_ocr function to read ocr json file
+# 2. change the path of the json and image
+##############
 
+
+# new read_ocr function
 def read_ocr(json_path):
-    ocr_info = json.load(open(json_path, 'r'))
-    polys = []
-    contents = []
-    for info in ocr_info:
-        contents.append(info['label'])
-        polys.append(info['points'])
+    """Read OCR data and extract word-level information."""
+    ocr_data = json.load(open(json_path, 'r'))  # Load JSON
+    polys = []  # Store bounding boxes
+    contents = []  # Store word texts
+
+    # Navigate the JSON hierarchy
+    for page in ocr_data['recognitionResults']:
+        for line in page['lines']:
+            for word in line['words']:
+                contents.append(word['text'])  # Extract text
+                # Convert [x1, y1, x2, y2, x3, y3, x4, y4] to [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+                bbox = [[word['boundingBox'][i], word['boundingBox'][i + 1]] for i in range(0, len(word['boundingBox']), 2)]
+                polys.append(bbox)  # Append bounding box
+
     return polys, contents
+
+
+# previous read_ocr function
+# def read_ocr(json_path):
+#     ocr_info = json.load(open(json_path, 'r'))
+#     polys = []
+#     contents = []
+#     for info in ocr_info:
+#         contents.append(info['label'])
+#         polys.append(info['points'])
+#     return polys, contents
 
 
 def polys2bboxes(polys):
@@ -74,8 +100,8 @@ def mask1d(tensors, pad_id):
 
 model_name_or_path = 'pretrained_model/graphdoc'
 sentence_model_path = 'pretrained_model/sentence-bert'
-image_path = 'samples/001.jpg'
-ocr_path = 'samples/001.json'
+image_path = 'samples/ffbf0023_4.png'
+ocr_path = 'samples/ffbf0023_4.json'
 
 # init model
 config = GraphDocConfig.from_pretrained(model_name_or_path)

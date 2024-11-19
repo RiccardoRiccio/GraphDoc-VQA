@@ -14,6 +14,7 @@ __pycache__/
 
 # Ignore dataset directory
 sp-docdqa/
+pretrained_model/
 
 # Ignore temporary or output files
 samples/*.json
