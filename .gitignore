@@ -1,2 +1,27 @@
+#########
+# added ignore files after the ######
 .vscode/*
 pretrained_model/*
+
+
+########## Here add gitignore files ##########
+
+
+
+# Ignore Python cache files and compiled Python files
+__pycache__/
+*.pyc
+
+# Ignore dataset directory
+sp-docdqa/
+
+# Ignore temporary or output files
+samples/*.json
+samples/*.png
+
+# Ignore environment files if specific to your local setup
+environment.yml
+
+# Ignore personal or trial code (optional, if not part of the project)
+mytrialcode/
+
