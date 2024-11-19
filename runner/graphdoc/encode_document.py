@@ -16,7 +16,7 @@ from transformers import AutoModel, AutoTokenizer
 ##############
 
 
-# new read_ocr function
+# R: new read_ocr function
 def read_ocr(json_path):
     """Read OCR data and extract word-level information."""
     ocr_data = json.load(open(json_path, 'r'))  # Load JSON
@@ -34,6 +34,14 @@ def read_ocr(json_path):
 
     return polys, contents
 
+# R: new process_question function
+def process_question(question, tokenizer, sentence_bert):
+    encoded_input = tokenizer([question], padding=True, truncation=True, return_tensors='pt')
+    encoded_input = encoded_input.to(sentence_bert.device)
+    with torch.no_grad():
+        model_output = sentence_bert(**encoded_input)
+    question_embedding = mean_pooling(model_output, encoded_input['attention_mask']).cpu().numpy()
+    return question_embedding[0]
 
 # previous read_ocr function
 # def read_ocr(json_path):
@@ -124,10 +132,19 @@ bboxes[:, 1::2] = bboxes[:, 1::2] * ratio_H
 sentence_embeddings = extract_sentence_embeddings(contents, tokenizer, sentence_bert)
 
 # append global node
-global_bbox = np.array([0, 0, 512,512]).astype('int64')
+# global_bbox = np.array([0, 0, 512,512]).astype('int64')
+# bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
+# global_embed = np.zeros_like(sentence_embeddings[0])
+# sentence_embeddings = np.concatenate([global_embed[None, :], sentence_embeddings], axis=0)
+
+# R: append question node instead of global node
+# append question node instead of global node
+question = "What is the type of organization?"  # Your question here
+question_embedding = process_question(question, tokenizer, sentence_bert)
+global_bbox = np.array([0, 0, 512, 512]).astype('int64')
 bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
-global_embed = np.zeros_like(sentence_embeddings[0])
-sentence_embeddings = np.concatenate([global_embed[None, :], sentence_embeddings], axis=0)
+sentence_embeddings = np.concatenate([question_embedding[None, :], sentence_embeddings], axis=0)
+
 
 input_images = merge3d([torch.from_numpy(image.transpose(2,0,1).astype(np.float32))], 0).cuda()
 input_embeds = merge2d([torch.from_numpy(sentence_embeddings)], 0).cuda()
