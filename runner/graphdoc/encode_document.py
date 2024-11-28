@@ -16,22 +16,49 @@ from transformers import AutoModel, AutoTokenizer
 ##############
 
 
-# R: new read_ocr function
+# R: new read_ocr function for getting word level information (from docVQA dataset)
+# def read_ocr(json_path):
+#     """Read OCR data and extract word-level information."""
+#     ocr_data = json.load(open(json_path, 'r'))  # Load JSON
+#     polys = []  # Store bounding boxes
+#     contents = []  # Store word texts
+
+#     # Navigate the JSON hierarchy
+#     for page in ocr_data['recognitionResults']:
+#         for line in page['lines']:
+#             for word in line['words']:
+#                 contents.append(word['text'])  # Extract text
+#                 # Convert [x1, y1, x2, y2, x3, y3, x4, y4] to [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+#                 bbox = [[word['boundingBox'][i], word['boundingBox'][i + 1]] for i in range(0, len(word['boundingBox']), 2)]
+#                 polys.append(bbox)  # Append bounding box
+
+#     return polys, contents
+
+# R: new read_ocr function for getting region level information (from easyocr json file like GraphDoc paper)
 def read_ocr(json_path):
-    """Read OCR data and extract word-level information."""
-    ocr_data = json.load(open(json_path, 'r'))  # Load JSON
-    polys = []  # Store bounding boxes
-    contents = []  # Store word texts
-
-    # Navigate the JSON hierarchy
-    for page in ocr_data['recognitionResults']:
-        for line in page['lines']:
-            for word in line['words']:
-                contents.append(word['text'])  # Extract text
-                # Convert [x1, y1, x2, y2, x3, y3, x4, y4] to [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-                bbox = [[word['boundingBox'][i], word['boundingBox'][i + 1]] for i in range(0, len(word['boundingBox']), 2)]
-                polys.append(bbox)  # Append bounding box
-
+    with open(json_path, 'r', encoding='utf-8') as f:
+        ocr_data = json.load(f)
+    
+    # Extract lines (paragraphs) from the JSON
+    lines = ocr_data['recognitionResults'][0]['lines']
+    
+    polys = []
+    contents = []
+    for line in lines:
+        bbox = line['boundingBox']
+        text = line['text']
+        
+        # Convert flat bbox to polygon format
+        poly = [
+            [bbox[0], bbox[1]],
+            [bbox[2], bbox[3]],
+            [bbox[4], bbox[5]],
+            [bbox[6], bbox[7]]
+        ]
+        
+        polys.append(poly)
+        contents.append(text)
+    
     return polys, contents
 
 # R: new process_question function
@@ -104,53 +131,94 @@ def mask1d(tensors, pad_id):
     for i, s in enumerate(tensors):
         out[i,:len(s)] = 1
     return out
+def get_document_embedding(question, image_path, ocr_path):
+
+    model_name_or_path = 'pretrained_model/graphdoc'
+    sentence_model_path = 'pretrained_model/sentence-bert'
+    # image_path = 'samples/ffbf0023_4.png'
+    # ocr_path = 'samples/ffbf0023_4.json'
+
+    # init model
+    config = GraphDocConfig.from_pretrained(model_name_or_path)
+    graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
+    graphdoc = graphdoc.cuda().eval()
+    tokenizer = AutoTokenizer.from_pretrained(sentence_model_path)
+    sentence_bert = AutoModel.from_pretrained(sentence_model_path)
+    sentence_bert = sentence_bert.cuda().eval()
+
+    # prepare input data
+    input_H = 512; input_W = 512
+    image = cv2.imread(image_path)
+    H, W = image.shape[:2]
+    ratio_H = input_H / H; ratio_W = input_W / W
+    image = cv2.resize(image, dsize=(input_W, input_H))
+    polys, contents = read_ocr(ocr_path)
+    bboxes = polys2bboxes(polys)
+    bboxes[:, 0::2] = bboxes[:, 0::2] * ratio_W
+    bboxes[:, 1::2] = bboxes[:, 1::2] * ratio_H
+    sentence_embeddings = extract_sentence_embeddings(contents, tokenizer, sentence_bert)
+
+    # append global node
+    # global_bbox = np.array([0, 0, 512,512]).astype('int64')
+    # bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
+    # global_embed = np.zeros_like(sentence_embeddings[0])
+    # sentence_embeddings = np.concatenate([global_embed[None, :], sentence_embeddings], axis=0)
+
+    # R: append question node instead of global node
+    # append question node instead of global node
+    # question = "What is the type of organization?"  # Your question here
+    question_embedding = process_question(question, tokenizer, sentence_bert)
+    global_bbox = np.array([0, 0, 512, 512]).astype('int64')
+    bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
+    sentence_embeddings = np.concatenate([question_embedding[None, :], sentence_embeddings], axis=0)
 
 
-model_name_or_path = 'pretrained_model/graphdoc'
-sentence_model_path = 'pretrained_model/sentence-bert'
-image_path = 'samples/ffbf0023_4.png'
-ocr_path = 'samples/ffbf0023_4.json'
+    input_images = merge3d([torch.from_numpy(image.transpose(2,0,1).astype(np.float32))], 0).cuda()
+    input_embeds = merge2d([torch.from_numpy(sentence_embeddings)], 0).cuda()
+    attention_mask = mask1d([torch.from_numpy(sentence_embeddings)], 0).cuda()
+    input_bboxes = merge2d([torch.from_numpy(bboxes)], 0).cuda()
+    input_data=dict(image=input_images, inputs_embeds=input_embeds, attention_mask=attention_mask, bbox=input_bboxes, return_dict=True)
 
-# init model
-config = GraphDocConfig.from_pretrained(model_name_or_path)
-graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
-graphdoc = graphdoc.cuda().eval()
-tokenizer = AutoTokenizer.from_pretrained(sentence_model_path)
-sentence_bert = AutoModel.from_pretrained(sentence_model_path)
-sentence_bert = sentence_bert.cuda().eval()
+    output = graphdoc(**input_data)
 
-# prepare input data
-input_H = 512; input_W = 512
-image = cv2.imread(image_path)
-H, W = image.shape[:2]
-ratio_H = input_H / H; ratio_W = input_W / W
-image = cv2.resize(image, dsize=(input_W, input_H))
-polys, contents = read_ocr(ocr_path)
-bboxes = polys2bboxes(polys)
-bboxes[:, 0::2] = bboxes[:, 0::2] * ratio_W
-bboxes[:, 1::2] = bboxes[:, 1::2] * ratio_H
-sentence_embeddings = extract_sentence_embeddings(contents, tokenizer, sentence_bert)
+    # print(output)
+    
+     # Attention mask
+    attention_mask = input_data['attention_mask']
 
-# append global node
-# global_bbox = np.array([0, 0, 512,512]).astype('int64')
-# bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
-# global_embed = np.zeros_like(sentence_embeddings[0])
-# sentence_embeddings = np.concatenate([global_embed[None, :], sentence_embeddings], axis=0)
+     # Print image dimensions
+    print("\nInput Dimensions:")
+    print(f"Original Image (H, W): {H}, {W}")
+    print(f"Resized Image (H, W): {input_H}, {input_W}")
+    
+    # After preparing OCR data
+    print("\nOCR Data:")
+    print(f"Number of text boxes: {len(polys)}")
+    print(f"Number of text contents: {len(contents)}")
+    
+    # After preparing embeddings
+    print("\nEmbedding Dimensions:")
+    print(f"Sentence embeddings shape: {sentence_embeddings.shape}")
+    print(f"Question embedding shape: {question_embedding.shape}")
+    print(f"Bounding boxes shape: {bboxes.shape}")
+    
+    # After preparing input tensors
+    print("\nInput Tensor Dimensions:")
+    print(f"Input images shape: {input_images.shape}")
+    print(f"Input embeds shape: {input_embeds.shape}")
+    print(f"Attention mask shape: {attention_mask.shape}")
+    print(f"Input bboxes shape: {input_bboxes.shape}")
+    
+    # After model output
+    print("\nOutput Dimensions:")
+    print(f"Last hidden state shape: {output.last_hidden_state.shape}")
+    print(f"Pooler output shape: {output.pooler_output.shape}")
+    
+    return output.last_hidden_state, output.pooler_output, input_data['attention_mask']
+    
 
-# R: append question node instead of global node
-# append question node instead of global node
-question = "What is the type of organization?"  # Your question here
-question_embedding = process_question(question, tokenizer, sentence_bert)
-global_bbox = np.array([0, 0, 512, 512]).astype('int64')
-bboxes = np.concatenate([global_bbox[None, :], bboxes], axis=0)
-sentence_embeddings = np.concatenate([question_embedding[None, :], sentence_embeddings], axis=0)
+def main():
+    get_document_embedding("What is the type of organization?", "samples/ffbf0023_4.png", "samples/ffbf0023_4_easyocr.json")
 
-
-input_images = merge3d([torch.from_numpy(image.transpose(2,0,1).astype(np.float32))], 0).cuda()
-input_embeds = merge2d([torch.from_numpy(sentence_embeddings)], 0).cuda()
-attention_mask = mask1d([torch.from_numpy(sentence_embeddings)], 0).cuda()
-input_bboxes = merge2d([torch.from_numpy(bboxes)], 0).cuda()
-input_data=dict(image=input_images, inputs_embeds=input_embeds, attention_mask=attention_mask, bbox=input_bboxes, return_dict=True)
-
-output = graphdoc(**input_data)
-print(output)
+if __name__ == "__main__":
+    main()
