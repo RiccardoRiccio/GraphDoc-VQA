@@ -1,0 +1,19 @@
+# CONFIGURATION FOR SAMPLE FINE-TUNING GRAPHDOCVQA
+
+training_parameters:
+  lr: 2e-4            # Learning rate for the optimizer
+  batch_size: 1        # Batch size (1 due to limited sample data)
+  train_epochs: 10     # Number of epochs
+  warmup_iterations: 1000  # Warmup steps for learning rate scheduler
+
+save_dir: save/
+model_name: GraphDocVQA
+
+dataset_paths:
+  train_file: sp-docvqa_sample/spdocvqa_qas_sample/train_v1.0_withQT.json  # Path to training data
+  val_file: sp-docvqa_sample/spdocvqa_qas_sample/val_v1.0_withQT.json      # Path to validation data
+  image_dir: sp-docvqa_sample/spdocvqa_images_sample                       # Path to image directory
+  ocr_dir: sp-docvqa_sample/spdocvqa_ocr                                   # Path to OCR JSON files
+
+logging:
+  save_best_model_path: best_model_graphdocvqa.pth  # Path to save the best model

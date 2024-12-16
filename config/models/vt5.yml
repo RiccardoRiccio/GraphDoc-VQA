@@ -3,19 +3,25 @@
 # R: moddified config using batch outside of training_parameters and set to 1
 save_dir: save/
 model_name: VT5
-# model_weights: t5-base
+model_weights: t5-base
 # model_weights: weights/t5_oracle_mp-docvqa__best.ckpt
-model_weights: rubentito/vt5-base-spdocvqa
+# model_weights: rubentito/vt5-base-spdocvqa
 max_source_length: 512
 device: cuda
 data_parallel: False
-batch_size: 1
+batch_size: 32
 
 training_parameters:
   lr: 2e-4  # 2e-4
-  # batch_size: 32
-  train_epochs: 10
+  # batch_size: 32  # original value
+  batch_size: 4 
+  train_epochs: 4
   warmup_iterations: 1000
+
+dataset_paths:
+  train_embeddings_dir: /home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample/train
+  val_embeddings_dir: /home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample/val
+
 
 # visual_module:
 #   model: 'dit'  # 'vit' / 'dit'
@@ -25,7 +31,7 @@ training_parameters:
 
 
 
-visual_module:
-  model: 'vit'
-  finetune: false
-  model_weights: 'google/vit-base-patch16-224-in21k'
+# visual_module:
+  # model: 'vit'
+  # finetune: false
+  # model_weights: 'google/vit-base-patch16-224-in21k'

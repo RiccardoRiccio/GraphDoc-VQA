@@ -11,8 +11,7 @@ from transformers import AutoModel, AutoTokenizer
 
 ##############
 # description of changes:
-# 1. add read_ocr function to read ocr json file
-# 2. change the path of the json and image
+#   SAme as encode_document.py but here i save the embedding and attention mask as .pt file
 ##############
 
 

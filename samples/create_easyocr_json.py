@@ -1,3 +1,7 @@
+########################################################
+# R: This code is to create the easyocr json file from the image
+########################################################
+
 import easyocr
 import cv2
 import json
@@ -18,7 +22,7 @@ def easyocr_to_json(image_path, word_results, paragraph_results):
                 "height": height,
                 "unit": "pixel",
                 "lines": [],  # for paragraphs/regions
-                "words": []   # for individual words
+                # "words": []   # for individual words
             }
         ]
     }
@@ -34,17 +38,17 @@ def easyocr_to_json(image_path, word_results, paragraph_results):
         }
         json_data["recognitionResults"][0]["lines"].append(line)
 
-    # Add word level results
-    for result in word_results:
-        bbox, text, conf = result
-        flat_bbox = [int(coord) for point in bbox for coord in point]
+    # # Add word level results
+    # for result in word_results:
+    #     bbox, text, conf = result
+    #     flat_bbox = [int(coord) for point in bbox for coord in point]
         
-        word = {
-            "boundingBox": flat_bbox,
-            "text": text,
-            "confidence": float(conf)
-        }
-        json_data["recognitionResults"][0]["words"].append(word)
+    #     word = {
+    #         "boundingBox": flat_bbox,
+    #         "text": text,
+    #         "confidence": float(conf)
+    #     }
+    #     json_data["recognitionResults"][0]["words"].append(word)
 
     return json_data
 
@@ -56,11 +60,11 @@ def main():
     image_path = "/home/rriccio/Desktop/GraphDoc/samples/ffbf0023_4.png"
     
     # Get word-level results with smaller width_ths
-    word_results = reader.readtext(
-        image_path,
-        paragraph=False,
-        width_ths=0.1  # Smaller value to prevent word merging
-    )
+    # word_results = reader.readtext(
+    #     image_path,
+    #     paragraph=False,
+    #     width_ths=0.1  # Smaller value to prevent word merging
+    # )
     
     # Get paragraph-level results with default parameters
     paragraph_results = reader.readtext(

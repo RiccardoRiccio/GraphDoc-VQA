@@ -16,50 +16,49 @@ from transformers import AutoModel, AutoTokenizer
 ##############
 
 
-# R: new read_ocr function for getting word level information (from docVQA dataset)
-# def read_ocr(json_path):
-#     """Read OCR data and extract word-level information."""
-#     ocr_data = json.load(open(json_path, 'r'))  # Load JSON
-#     polys = []  # Store bounding boxes
-#     contents = []  # Store word texts
+# R: new read_ocr function for getting line level information (from docVQA dataset)
+def read_ocr(json_path):
+    """Read OCR data and extract line-level information."""
+    ocr_data = json.load(open(json_path, 'r'))  # Load JSON
+    polys = []  # Store bounding boxes for each line
+    contents = []  # Store line texts
 
-#     # Navigate the JSON hierarchy
-#     for page in ocr_data['recognitionResults']:
-#         for line in page['lines']:
-#             for word in line['words']:
-#                 contents.append(word['text'])  # Extract text
-#                 # Convert [x1, y1, x2, y2, x3, y3, x4, y4] to [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-#                 bbox = [[word['boundingBox'][i], word['boundingBox'][i + 1]] for i in range(0, len(word['boundingBox']), 2)]
-#                 polys.append(bbox)  # Append bounding box
+    # Navigate the JSON hierarchy and extract line-level data
+    for page in ocr_data['recognitionResults']:
+        for line in page['lines']:
+            contents.append(line['text'])  # Extract line text
+            # Convert the bounding box of the line to the required format
+            bbox = [[line['boundingBox'][i], line['boundingBox'][i + 1]] for i in range(0, len(line['boundingBox']), 2)]
+            polys.append(bbox)  # Append bounding box for the line
 
-#     return polys, contents
+    return polys, contents
 
 # R: new read_ocr function for getting region level information (from easyocr json file like GraphDoc paper)
-def read_ocr(json_path):
-    with open(json_path, 'r', encoding='utf-8') as f:
-        ocr_data = json.load(f)
+# def read_ocr(json_path):
+#     with open(json_path, 'r', encoding='utf-8') as f:
+#         ocr_data = json.load(f)
     
-    # Extract lines (paragraphs) from the JSON
-    lines = ocr_data['recognitionResults'][0]['lines']
+#     # Extract lines (paragraphs) from the JSON
+#     lines = ocr_data['recognitionResults'][0]['lines']
     
-    polys = []
-    contents = []
-    for line in lines:
-        bbox = line['boundingBox']
-        text = line['text']
+#     polys = []
+#     contents = []
+#     for line in lines:
+#         bbox = line['boundingBox']
+#         text = line['text']
         
-        # Convert flat bbox to polygon format
-        poly = [
-            [bbox[0], bbox[1]],
-            [bbox[2], bbox[3]],
-            [bbox[4], bbox[5]],
-            [bbox[6], bbox[7]]
-        ]
+#         # Convert flat bbox to polygon format
+#         poly = [
+#             [bbox[0], bbox[1]],
+#             [bbox[2], bbox[3]],
+#             [bbox[4], bbox[5]],
+#             [bbox[6], bbox[7]]
+#         ]
         
-        polys.append(poly)
-        contents.append(text)
+#         polys.append(poly)
+#         contents.append(text)
     
-    return polys, contents
+#     return polys, contents
 
 # R: new process_question function
 def process_question(question, tokenizer, sentence_bert):
@@ -131,6 +130,7 @@ def mask1d(tensors, pad_id):
     for i, s in enumerate(tensors):
         out[i,:len(s)] = 1
     return out
+    
 def get_document_embedding(question, image_path, ocr_path):
 
     model_name_or_path = 'pretrained_model/graphdoc'
@@ -186,7 +186,7 @@ def get_document_embedding(question, image_path, ocr_path):
      # Attention mask
     attention_mask = input_data['attention_mask']
 
-     # Print image dimensions
+    #  # Print image dimensions
     print("\nInput Dimensions:")
     print(f"Original Image (H, W): {H}, {W}")
     print(f"Resized Image (H, W): {input_H}, {input_W}")

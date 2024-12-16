@@ -13,7 +13,7 @@ __pycache__/
 *.pyc
 
 # Ignore dataset directory
-sp-docdqa/
+sp-docvqa/
 pretrained_model/
 
 # Ignore temporary or output files
@@ -26,3 +26,7 @@ environment.yml
 # Ignore personal or trial code (optional, if not part of the project)
 mytrialcode/
 
+RVL_CDIP/
+save/
+sp-docvqa_sample/
+spdocvqa_embeddings_single/
