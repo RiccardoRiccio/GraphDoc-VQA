@@ -187,32 +187,32 @@ def get_document_embedding(question, image_path, ocr_path):
     attention_mask = input_data['attention_mask']
 
     #  # Print image dimensions
-    print("\nInput Dimensions:")
-    print(f"Original Image (H, W): {H}, {W}")
-    print(f"Resized Image (H, W): {input_H}, {input_W}")
+    # print("\nInput Dimensions:")
+    # print(f"Original Image (H, W): {H}, {W}")
+    # print(f"Resized Image (H, W): {input_H}, {input_W}")
     
-    # After preparing OCR data
-    print("\nOCR Data:")
-    print(f"Number of text boxes: {len(polys)}")
-    print(f"Number of text contents: {len(contents)}")
+    # # After preparing OCR data
+    # print("\nOCR Data:")
+    # print(f"Number of text boxes: {len(polys)}")
+    # print(f"Number of text contents: {len(contents)}")
     
-    # After preparing embeddings
-    print("\nEmbedding Dimensions:")
-    print(f"Sentence embeddings shape: {sentence_embeddings.shape}")
-    print(f"Question embedding shape: {question_embedding.shape}")
-    print(f"Bounding boxes shape: {bboxes.shape}")
+    # # After preparing embeddings
+    # print("\nEmbedding Dimensions:")
+    # print(f"Sentence embeddings shape: {sentence_embeddings.shape}")
+    # print(f"Question embedding shape: {question_embedding.shape}")
+    # print(f"Bounding boxes shape: {bboxes.shape}")
     
-    # After preparing input tensors
-    print("\nInput Tensor Dimensions:")
-    print(f"Input images shape: {input_images.shape}")
-    print(f"Input embeds shape: {input_embeds.shape}")
-    print(f"Attention mask shape: {attention_mask.shape}")
-    print(f"Input bboxes shape: {input_bboxes.shape}")
+    # # After preparing input tensors
+    # print("\nInput Tensor Dimensions:")
+    # print(f"Input images shape: {input_images.shape}")
+    # print(f"Input embeds shape: {input_embeds.shape}")
+    # print(f"Attention mask shape: {attention_mask.shape}")
+    # print(f"Input bboxes shape: {input_bboxes.shape}")
     
-    # After model output
-    print("\nOutput Dimensions:")
-    print(f"Last hidden state shape: {output.last_hidden_state.shape}")
-    print(f"Pooler output shape: {output.pooler_output.shape}")
+    # # After model output
+    # print("\nOutput Dimensions:")
+    # print(f"Last hidden state shape: {output.last_hidden_state.shape}")
+    # print(f"Pooler output shape: {output.pooler_output.shape}")
     
     return output.last_hidden_state, output.pooler_output, input_data['attention_mask']
     

@@ -64,8 +64,8 @@ def compare_specific_tensors(single_file, batch_file, key):
 
 def main():
     # File paths
-    single_file = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_single/train/nhxj0037_1_q400.pt"
-    batch_file = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample/train/nhxj0037_1_q400.pt"
+    single_file = "/home/rriccio/Desktop/GraphDoc/ORIGINAL_EMBEDDINGS/ffng0227_13.pt"
+    batch_file = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample_original/ffng0227_13.pt"
 
     # Check specific keys
     for key in ['last_hidden_state', 'attention_mask']:
@@ -73,4 +73,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
