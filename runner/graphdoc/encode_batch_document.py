@@ -1,7 +1,8 @@
 #########################
 # SAME CODE AS encode_document.py BUT HERE WE CAN SEND BATCHES OF IMAGE-QUESTIONS PAIR
 ########################
-
+#########
+# TO DO: 1) ELIMINATE PRINTS, 2)RESTORE ORIGINAL POLY FUNCTION
 
 import cv2
 import json
@@ -13,6 +14,7 @@ sys.path.append('./')
 from layoutlmft.models.graphdoc.configuration_graphdoc import GraphDocConfig
 from layoutlmft.models.graphdoc.modeling_graphdoc import GraphDocForEncode
 from transformers import AutoModel, AutoTokenizer
+from torch.nn import DataParallel
 
 # Function to read OCR data
 def read_ocr(json_path):
@@ -43,6 +45,7 @@ def polys2bboxes(polys):
         bboxes.append([x1, y1, x2, y2])
     bboxes = np.array(bboxes).astype('int64')
     return bboxes
+
 
 # Mean pooling for embeddings
 def mean_pooling(model_output, attention_mask):
@@ -98,12 +101,18 @@ def get_document_embedding(questions, image_paths, ocr_paths):
     """
     Compute document embeddings for a batch of questions, images, and OCR data.
     """
-    model_name_or_path = 'pretrained_model/graphdoc'
-    sentence_model_path = 'pretrained_model/sentence-bert'
+    model_name_or_path = '/data2/users/rriccio/pretrained_model/graphdoc'
+    sentence_model_path = '/data2/users/rriccio/pretrained_model/sentence-bert'
 
     config = GraphDocConfig.from_pretrained(model_name_or_path)
+    # graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
+    # graphdoc = graphdoc.cuda().eval()
+
+    ##### added this to have multiple gpu
     graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
-    graphdoc = graphdoc.cuda().eval()
+    graphdoc = DataParallel(graphdoc, device_ids=[0, 1, 2]).cuda()
+    graphdoc = graphdoc.eval()
+
     tokenizer = AutoTokenizer.from_pretrained(sentence_model_path)
     sentence_bert = AutoModel.from_pretrained(sentence_model_path)
     sentence_bert = sentence_bert.cuda().eval()
@@ -117,8 +126,17 @@ def get_document_embedding(questions, image_paths, ocr_paths):
 
         polys, contents = read_ocr(ocr_path)
         bbox = polys2bboxes(polys)
-        bbox[:, 0::2] = (bbox[:, 0::2] * ratio_W).astype('int64')
-        bbox[:, 1::2] = (bbox[:, 1::2] * ratio_H).astype('int64')
+        # bbox[:, 0::2] = (bbox[:, 0::2] * ratio_W).astype('int64')
+        # bbox[:, 1::2] = (bbox[:, 1::2] * ratio_H).astype('int64')
+ 
+
+        if bbox.size == 0:
+            print(f"No bounding boxes found for OCR file: {ocr_path}, skipping.")
+            raise ValueError(f"Bounding boxes are empty for file {ocr_path}")
+            continue
+        bbox[:, 0::2] = bboxes[:, 0::2] * ratio_W
+        bbox[:, 1::2] = bboxes[:, 1::2] * ratio_H
+      
 
         embeddings = extract_sentence_embeddings(contents, tokenizer, sentence_bert)
         question_embedding = process_question(question, tokenizer, sentence_bert)
@@ -150,7 +168,11 @@ def get_document_embedding(questions, image_paths, ocr_paths):
 
     # DO NOT overwrite attention_mask here
     attention_mask = attention_mask.cuda()  # Just move the mask to GPU
-
+    print("Tensor Shapes:")
+    print(f"Images: {images.shape}")
+    print(f"Bounding Boxes: {bboxes.shape}")
+    print(f"Text Embeddings: {text_embeddings.shape}")
+    print(f"Attention Mask: {attention_mask.shape}")
     input_data = {
         'image': images,
         'inputs_embeds': text_embeddings,

@@ -1,29 +1,37 @@
 import torch
+from transformers import T5ForConditionalGeneration
 
-def inspect_pt_file(file_path):
-    # Load the .pt file
-    data = torch.load(file_path)
+def check_t5_parameter_status(model_name="t5-base", freeze_encoder=True):
+    # Load T5 model
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
     
-    print(f"Inspecting contents of: {file_path}\n")
-    
-    # Iterate through keys and print details
-    for key, value in data.items():
-        print(f"Key: {key}")
-        
-        if isinstance(value, torch.Tensor):
-            print(f"Type: Tensor")
-            print(f"Shape: {value.shape}")
-            print(f"First 10 elements (flattened): {value.view(-1)[:10]}\n")
-        elif isinstance(value, str):
-            print(f"Type: String")
-            print(f"Value: {value}\n")
-        else:
-            print(f"Type: {type(value)}")
-            print(f"Value: {value}\n")
+    if freeze_encoder:
+        # Freeze the encoder and shared embeddings
+        for p in model.encoder.parameters():
+            p.requires_grad = False
+        # for p in model.shared.parameters():  # Embedding layer
+        #     p.requires_grad = False
 
-def main():
-    file_path = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample_original/ffng0227_13.pt"
-    inspect_pt_file(file_path)
+        # Optionally, freeze lm_head (final linear layer) if needed
+        # for p in model.lm_head.parameters():
+            # p.requires_grad = True
+            # print("lm head p: ", p)
+
+    # Print the status of each parameter
+    print("\n====== PARAMETER FREEZING STATUS ======\n")
+    for name, param in model.named_parameters():
+        status = "TRAINABLE" if param.requires_grad else "FROZEN"
+        print(f"{name.ljust(70)} -> {status}")
+    
+    # Count frozen and trainable parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    frozen_params = total_params - trainable_params
+    
+    print("\n====== SUMMARY ======\n")
+    print(f"Total Parameters: {total_params:,}")
+    print(f"Trainable Parameters: {trainable_params:,} ({(trainable_params / total_params) * 100:.2f}%)")
+    print(f"Frozen Parameters: {frozen_params:,} ({(frozen_params / total_params) * 100:.2f}%)")
 
 if __name__ == "__main__":
-    main()
+    check_t5_parameter_status("rubentito/vt5-base-spdocvqa", freeze_encoder=True)

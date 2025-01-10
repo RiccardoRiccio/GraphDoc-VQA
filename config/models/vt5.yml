@@ -1,32 +1,46 @@
 
 
 # R: moddified config using batch outside of training_parameters and set to 1
-save_dir: save/
-model_name: VT5
+save_dir: /data2/users/rriccio/save_vt5gdoc/
+model_name: GVT5 #DVT5
 model_weights: t5-base
 # model_weights: weights/t5_oracle_mp-docvqa__best.ckpt
 # model_weights: rubentito/vt5-base-spdocvqa
 max_source_length: 512
 device: cuda
-data_parallel: False
-batch_size: 32
+data_parallel: True
+batch_size: 4
 
 training_parameters:
   lr: 2e-4  # 2e-4
   # batch_size: 32  # original value
-  batch_size: 4 
-  train_epochs: 4
+  batch_size: 4
+  train_epochs: 1
   warmup_iterations: 1000
 
 dataset_paths:
-  train_embeddings_dir: /home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample/train
-  val_embeddings_dir: /home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample/val
+  # train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  # val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  # train_qas_path: /data2/users/rriccio/spdocvqa_qas/train_v1.0_withQT.json
+  # val_qas_path: /data2/users/rriccio/spdocvqa_qas/val_v1.0_withQT.json
+
+  train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  train_qas_path: /data2/users/rriccio/sample_train_qa.json
+  val_qas_path: /data2/users/rriccio/sample_val_qa.json
+
+  ocr_dir: /data2/users/rriccio/spdocvqa_ocr
+  images_dir: /data2/users/rriccio/spdocvqa_images
+
+  # spdocvqa_embeddings_sample_original
+
+# If you need images:
 
 
-# visual_module:
-#   model: 'dit'  # 'vit' / 'dit'
-#   finetune: false
-#   model_weights: 'microsoft/dit-base-finetuned-rvlcdip'  # 'google/vit-base-patch16-224-in21k' / 'microsoft/dit-base-finetuned-rvlcdip'
+visual_module:
+  model: 'dit'  # 'vit' / 'dit'
+  finetune: false
+  model_weights: 'google/vit-base-patch16-224-in21k' # microsoft/dit-base-finetuned-rvlcdip 'google/vit-base-patch16-224-in21k' # 3) 'microsoft/dit-base-finetuned-rvlcdip' # 1) 'microsoft/dit-base-finetuned-rvlcdip'  # 2) 'google/vit-base-patch16-224-in21k' / 'microsoft/dit-base-finetuned-rvlcdip'
 
 
 

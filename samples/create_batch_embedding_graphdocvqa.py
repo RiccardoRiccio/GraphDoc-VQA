@@ -8,6 +8,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 from runner.graphdoc.encode_batch_document import get_document_embedding
 import warnings
+import gc
+
 
 # Suppress all warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -19,7 +21,7 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)
 logging.getLogger("transformers.tokenization_utils").setLevel(logging.ERROR)
 torch.cuda.empty_cache()
-def save_embeddings_for_split(data_split, qas_file, image_dir, ocr_dir, save_dir, batch_size=8):
+def save_embeddings_for_split(data_split, qas_file, image_dir, ocr_dir, save_dir, batch_size=64):
     """
     Precompute and save embeddings for a specific dataset split using batches.
     
@@ -78,12 +80,13 @@ def process_batch(batch_data, split_save_dir):
     # print(f"First image path in batch: {image_paths[0]}")
 
     try:
-        # Get batch embeddings
-        last_hidden_states, pooler_outputs, attention_masks = get_document_embedding(
-            questions=list(questions), 
-            image_paths=list(image_paths), 
-            ocr_paths=list(ocr_paths)
-        )
+        with torch.no_grad():  # Add this to disable gradients
+            # Get batch embeddings
+            last_hidden_states, pooler_outputs, attention_masks = get_document_embedding(
+                questions=list(questions), 
+                image_paths=list(image_paths), 
+                ocr_paths=list(ocr_paths)
+            )
 
         # torch.cuda.empty_cache()
 
@@ -107,6 +110,11 @@ def process_batch(batch_data, split_save_dir):
                 "ocr_path": ocr_paths[idx]
             }, save_path)
 
+            # Explicitly clean up variables
+        del last_hidden_states, pooler_outputs, attention_masks, questions, answers_list, image_names, question_ids
+        torch.cuda.empty_cache()
+        gc.collect()  # Use garbage collector to clean up memory
+
     except Exception as e:
         print(f"Error processing batch: {e}")
         print(f"Batch data details: {batch_data}")
@@ -115,9 +123,9 @@ def process_batch(batch_data, split_save_dir):
 
 def main():
     # Directories and file paths
-    image_dir = "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_images"
-    ocr_dir = "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_ocr"
-    save_dir = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample"
+    image_dir = "/data2/users/rriccio/spdocvqa_images"
+    ocr_dir = "/data2/users/rriccio/spdocvqa_ocr"
+    save_dir = "/data2/users/rriccio/spdocvqa_embeddings_sample"
 
     # JSON files for each split
     splits = {
@@ -125,9 +133,9 @@ def main():
         # "val": "/home/rriccio/Desktop/GraphDoc/sp-docvqa_sample/spdocvqa_qas_sample/val_v1.0_withQT.json",
         # "test": "/home/rriccio/Desktop/GraphDoc/sp-docvqa_sample/spdocvqa_qas_sample/test_v1.0.json"
 
-        "train": "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_qas/train_v1.0_withQT.json",
-        "val": "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_qas/val_v1.0_withQT.json",
-        "test": "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_qas/test_v1.0.json"
+        "train": "/data2/users/rriccio/spdocvqa_qas/train_v1.0_withQT.json",
+        "val": "/data2/users/rriccio/spdocvqa_qas/val_v1.0_withQT.json",
+        "test": "/data2/users/rriccio/spdocvqa_qas/test_v1.0.json"
     }
 
     # Save embeddings for each split

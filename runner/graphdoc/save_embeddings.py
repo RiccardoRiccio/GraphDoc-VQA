@@ -132,8 +132,8 @@ def mask1d(tensors, pad_id):
     return out
 def get_document_embedding(question, image_path, ocr_path):
 
-    model_name_or_path = 'pretrained_model/graphdoc'
-    sentence_model_path = 'pretrained_model/sentence-bert'
+    model_name_or_path = '/data2/users/rriccio/pretrained_model/graphdoc'
+    sentence_model_path = '/data2/users/rriccio/pretrained_model/sentence-bert'
     # image_path = 'samples/ffbf0023_4.png'
     # ocr_path = 'samples/ffbf0023_4.json'
 

@@ -148,8 +148,8 @@ def extract_line_and_word_embeddings(contents, word_contents_per_line, tokenizer
     return sentence_embeddings, token_embeddings_per_entity, token_word_mapping
 
 def get_document_embedding(questions, image_paths, ocr_paths):
-    model_name_or_path = 'pretrained_model/graphdoc'
-    sentence_model_path = 'pretrained_model/sentence-bert'
+    model_name_or_path = '/data2/users/rriccio/pretrained_model/graphdoc'
+    sentence_model_path = '/data2/users/rriccio/pretrained_model/sentence-bert'
 
     config = GraphDocConfig.from_pretrained(model_name_or_path)
     graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)

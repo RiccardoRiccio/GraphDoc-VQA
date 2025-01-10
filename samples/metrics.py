@@ -66,7 +66,7 @@ class Evaluator:
         return 0
 
     def _calculate_anls(self, gt, pred, answer_type):
-        print(f"GT: {gt}, Prediction: {pred}")  # Debug print
+        # print(f"GT: {gt}, Prediction: {pred}")  # Debug print
         if len(pred) == 0:
             return 0
 

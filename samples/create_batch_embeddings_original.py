@@ -114,12 +114,13 @@ def process_batch(batch_data, save_dir):
 def main():
     # Directories and file paths
     # image_dir = "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_images"
-    image_dir = "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_images"
-    ocr_dir = "/home/rriccio/Desktop/GraphDoc/sp-docvqa/spdocvqa_ocr"
-    save_dir = "/home/rriccio/Desktop/GraphDoc/spdocvqa_embeddings_sample_original"
+    image_dir = "/data2/users/rriccio/spdocvqa_images"
+    ocr_dir = "/data2/users/rriccio/spdocvqa_ocr"
+    save_dir = "/data2/users/rriccio/spdocvqa_embeddings_sample_original"
+
 
     # Save embeddings for all images in batches
-    save_image_embeddings(image_dir, ocr_dir, save_dir, batch_size=8)
+    save_image_embeddings(image_dir, ocr_dir, save_dir, batch_size=128)
 
 if __name__ == "__main__":
     main()

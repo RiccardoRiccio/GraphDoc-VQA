@@ -1,5 +1,5 @@
 #################################
-# GET THE ORIGINAL GRAPHDOC ENCODING
+# GET THE ORIGINAL GRAPHDOC ENCODING (for now code has some problems)
 #################################
 
 import cv2
@@ -7,6 +7,7 @@ import json
 import torch
 import numpy as np
 import sys
+from torch.nn import DataParallel
 sys.path.append('./')
 
 from layoutlmft.models.graphdoc.configuration_graphdoc import GraphDocConfig
@@ -93,13 +94,18 @@ def get_original_document_embedding(image_paths, ocr_paths):
     Returns:
         tuple: (last_hidden_state, pooler_output, attention_mask)
     """
-    model_name_or_path = 'pretrained_model/graphdoc'
-    sentence_model_path = 'pretrained_model/sentence-bert'
+    model_name_or_path = '/data2/users/rriccio/pretrained_model/graphdoc'
+    sentence_model_path = '/data2/users/rriccio/pretrained_model/sentence-bert'
 
     # Initialize models
     config = GraphDocConfig.from_pretrained(model_name_or_path)
+    # graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
+    # graphdoc = graphdoc.cuda().eval()
+
+    # USE FOR MULTIPLE GPUs
     graphdoc = GraphDocForEncode.from_pretrained(model_name_or_path, config=config)
-    graphdoc = graphdoc.cuda().eval()
+    graphdoc = DataParallel(graphdoc, device_ids=[0, 1, 2]).cuda()
+    graphdoc = graphdoc.eval()
     tokenizer = AutoTokenizer.from_pretrained(sentence_model_path)
     sentence_bert = AutoModel.from_pretrained(sentence_model_path)
     sentence_bert = sentence_bert.cuda().eval()

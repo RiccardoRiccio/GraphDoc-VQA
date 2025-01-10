@@ -1,28 +1,45 @@
 import random
 import numpy as np
+import sys
+import os
 
+# Add the parent directory of the current script to the Python path
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(parent_dir)
 import torch
 import torch.nn as nn
 from click.core import batch
 from transformers import T5Tokenizer, T5ForConditionalGeneration
-import layoutlmft.models.vqa._model_utils as model_utils
-from layoutlmft.models.vqa._modules import CustomT5Config, SpatialEmbeddings, VisualEmbeddings
+import _model_utils as model_utils
+from _modules import CustomT5Config, SpatialEmbeddings, VisualEmbeddings
 import transformers.models.t5.modeling_t5
 
+#######################################
+######### R: Just moved everything to device
+#####################################
 
 class ProxyVT5:
     def __init__(self, config):
+        ########## R: I AM ADDING A self.device = cuda and moving the model there
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
         self.batch_size = config['batch_size']
         self.tokenizer = T5Tokenizer.from_pretrained(config['model_weights'])
         self.model = T5ForConditionalGeneration.from_pretrained(config['model_weights'])
+
+        # Move the model to the correct device
+        self.model.to(self.device)
+
         self.page_retrieval = config['page_retrieval'].lower() if 'page_retrieval' in config else None
         self.max_source_length = config.get('max_source_length', 512)
 
         t5_config = CustomT5Config.from_pretrained(config['model_weights'])
         t5_config.visual_module_config = config['visual_module']
 
-        self.spatial_embedding = SpatialEmbeddings(t5_config)
-        self.visual_embedding = VisualEmbeddings(t5_config)
+        ######## R: MOVED THIS TO THE DEVICES
+        self.spatial_embedding = SpatialEmbeddings(t5_config).to(self.device)
+        self.visual_embedding = VisualEmbeddings(t5_config).to(self.device)
 
     def parallelize(self):
         self.model = nn.DataParallel(self.model)
@@ -53,6 +70,11 @@ class ProxyVT5:
             batch_input_boxes.append(np.concatenate([input_boxes[:self.max_source_length-1],  np.array([eos_box])]))  # Append a bounding box corresponding to the eos_token.
             longest_seq = min(max(longest_seq, len(input_ids) + 1), self.max_source_length)
 
+        # Debugging: Print sample bboxes before converting to tensors
+        print("\n[prepare_inputs_for_vqa Debug] Sample bboxes before tensor conversion:")
+        for i in range(min(bs, 2)):  # Print first 2 samples
+            print(f"  Sample {i}: Number of boxes={len(batch_input_boxes[i])}, First bbox={batch_input_boxes[i][0]}")
+
         # Convert to tensors and pad. Actually, a pad tensor is created and it's filled with corresponding values.
         tensor_input_ids = torch.full([bs, longest_seq], fill_value=self.tokenizer.pad_token_id, dtype=torch.long)
         tensor_boxes = torch.full([bs, longest_seq, 4],  fill_value=padding_box_value, dtype=torch.long)
@@ -70,14 +92,47 @@ class ProxyVT5:
         input_embeds = self.model.shared(tokens.input_ids)
         """
 
+        # Debugging: Print bbox tensor max and min before embeddings
+        print("\n[prepare_inputs_for_vqa Debug] BBox tensor stats before embeddings:")
+        for batch_idx in range(bs):
+            print(f"  Sample {batch_idx}: Tensor bbox max={tensor_boxes[batch_idx].max()}, min={tensor_boxes[batch_idx].min()}")
+
         # Send everything to GPU
         tensor_input_ids = tensor_input_ids.to(self.model.device)
         tensor_boxes = tensor_boxes.to(self.model.device)
         tensor_attention_mask = tensor_attention_mask.to(self.model.device)
 
+        print(f"Debugging tensor_boxes:")
+        print(f"  tensor_boxes.shape: {tensor_boxes.shape}")
+        print(f"  tensor_boxes.device: {tensor_boxes.device}")
+        print(f"  tensor_boxes.max(): {tensor_boxes.max()}")
+        print(f"  tensor_boxes.min(): {tensor_boxes.min()}")
+
         # Get semantic and spatial embeddings
         semantic_embedding = self.model.shared(tensor_input_ids)
+
+        
+        # Debugging device consistency
+        print(f"Ensured tensor_boxes device: {tensor_boxes.device}")
+        if torch.isnan(tensor_boxes).any():
+            print("Error: tensor_boxes contain NaN values.")
+        if torch.isinf(tensor_boxes).any():
+            print("Error: tensor_boxes contain Inf values.")
+        if (tensor_boxes < 0).any():
+            print("Error: tensor_boxes contain negative values.")
+        if (tensor_boxes > 4000).any():  # Assuming a max image dimension of 4000
+            print("Warning: tensor_boxes contain values exceeding 4000.")
+
         spatial_embedding = self.spatial_embedding(tensor_boxes)
+
+
+        # Debugging spatial_embedding output
+        print(f"Output of spatial_embedding:")
+        print(f"  spatial_embedding.shape: {spatial_embedding.shape}")
+        print(f"  spatial_embedding.device: {spatial_embedding.device}")
+        print(f"  spatial_embedding.max(): {spatial_embedding.max()}")
+        print(f"  spatial_embedding.min(): {spatial_embedding.min()}")
+
         visual_embedding, visual_emb_mask = self.visual_embedding(images)
 
         # input_embeds = semantic_embedding
