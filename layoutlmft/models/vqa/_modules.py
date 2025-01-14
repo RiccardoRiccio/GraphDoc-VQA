@@ -45,11 +45,33 @@ class SpatialEmbeddings(nn.Module):
 
         self.config = config
 
+    # def forward(self, bbox):
+    #     # Return a placeholder tensor with the correct shape and device
+    #     batch_size, num_boxes, _ = bbox.shape
+    #     embeddings = torch.zeros((batch_size, num_boxes, self.config.hidden_size), device=self.device)
+    #     print("SpatialEmbeddings: Skipping spatial embeddings computation.")
+    #     return embeddings
     def forward(self, bbox):
-        # Return a placeholder tensor with the correct shape and device
-        batch_size, num_boxes, _ = bbox.shape
-        embeddings = torch.zeros((batch_size, num_boxes, self.config.hidden_size), device=self.device)
-        print("SpatialEmbeddings: Skipping spatial embeddings computation.")
+        left_position_embeddings = self.x_position_embeddings(bbox[:, :, 0])
+        upper_position_embeddings = self.y_position_embeddings(bbox[:, :, 1])
+        right_position_embeddings = self.x_position_embeddings(bbox[:, :, 2])
+        lower_position_embeddings = self.y_position_embeddings(bbox[:, :, 3])
+
+        # h_position_embeddings = self.h_position_embeddings(bbox[:, :, 3] - bbox[:, :, 1])  # TODO Remove width and height to test how much important are they.
+        # w_position_embeddings = self.w_position_embeddings(bbox[:, :, 2] - bbox[:, :, 0])  # TODO Remove width and height to test how much important are they.
+
+        embeddings = (
+                left_position_embeddings
+                + upper_position_embeddings
+                + right_position_embeddings
+                + lower_position_embeddings
+                # + h_position_embeddings
+                # + w_position_embeddings
+        )
+
+        embeddings = self.LayerNorm(embeddings)
+        embeddings = self.dropout(embeddings)
+        embeddings = self.spatial_emb_matcher(embeddings)
         return embeddings
 
 class MLP(nn.Module):

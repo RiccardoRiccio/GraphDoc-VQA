@@ -1,0 +1,5 @@
+Requirement already satisfied: transformers in /home/rriccio/miniconda3/envs/gvqa_transformer/lib/python3.8/site-packages (4.11.0)
+Collecting force
+  Downloading force-0.1.4.tar.gz (2.0 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'

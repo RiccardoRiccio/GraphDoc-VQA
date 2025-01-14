@@ -32,6 +32,7 @@ from layoutlmft.models.vqa.vt5 import ProxyVT5  # Importing ProxyVT5 from vt5.py
 ####################
 #problems: added the decoded id
 #############
+
 ###############################################################################
 # 1) Utility: Load YAML Config
 ###############################################################################
@@ -130,8 +131,13 @@ class HybridVT5GraphDoc:
 
         # Concatenate attention masks
         final_attention_mask = torch.cat([attention_mask, padded_doc_mask], dim=1) 
-         # Print the shape of the concatenated embeddings
-        print(f"Final Concatenated Encodings Shape: {final_enc.shape}")  # Example: [B, seq_len + doc_seq_len, d_model]
+
+        # New print statements to inspect final_attention_mask
+        print(f"[HybridVT5GraphDoc] Final Attention Mask Shape: {final_attention_mask.shape}")
+        # print(f"[HybridVT5GraphDoc] Final Attention Mask Sample: {final_attention_mask[0]}")
+        # print(f"[HybridVT5GraphDoc] Number of active (1) tokens in sample 0: {final_attention_mask[0].sum().item()}")
+            # Print the shape of the concatenated embeddings
+        # print(f"Final Concatenated Encodings Shape: {final_enc.shape}")  # Example: [B, seq_len + doc_seq_len, d_model]
 
         # D) Pass combined embeddings to the decoder
         outputs = self.vt5.model(
@@ -145,24 +151,25 @@ class HybridVT5GraphDoc:
         decoder_input_ids = torch.ones((batch_size, 1), dtype=torch.long, device=self.device) * self.tokenizer.pad_token_id
 
         # Debugging prints for `generate` inputs
-        print(f"[Debug] Before generate call:")
-        print(f"  final_enc.shape: {final_enc.shape}")
-        print("padded doc shape: ", {padded_doc_embeds.shape})
-        print(f"  final_enc.device: {final_enc.device}")
-        print(f"  final_enc.max(): {final_enc.max()}, final_enc.min(): {final_enc.min()}")
-        print(f"  decoder_input_ids.shape: {decoder_input_ids.shape}")
-        print(f"  decoder_input_ids.device: {decoder_input_ids.device}")
-        print(f"  decoder_input_ids.max(): {decoder_input_ids.max()}, decoder_input_ids.min(): {decoder_input_ids.min()}")
+        # print(f"[Debug] Before generate call:")
+        # print(f"  final_enc.shape: {final_enc.shape}")
+        # print("padded doc shape: ", {padded_doc_embeds.shape})
+        # print(f"  final_enc.device: {final_enc.device}")
+        # print(f"  final_enc.max(): {final_enc.max()}, final_enc.min(): {final_enc.min()}")
+        # print(f"  decoder_input_ids.shape: {decoder_input_ids}")
+        # print(f"  decoder_input_ids.shape: {decoder_input_ids.shape}")
+        # print(f"  decoder_input_ids.device: {decoder_input_ids.device}")
+        # print(f"  decoder_input_ids.max(): {decoder_input_ids.max()}, decoder_input_ids.min(): {decoder_input_ids.min()}")
 
-        if attention_mask is not None:
-            print(f"  attention_mask.shape: {attention_mask.shape}")
-            print(f"  attention_mask.device: {attention_mask.device}")
-            print(f"  attention_mask.max(): {attention_mask.max()}, attention_mask.min(): {attention_mask.min()}")
-        else:
-            print(f"  attention_mask: None")
-        print(f"padded_doc_mask: {padded_doc_mask}")
-        print(f"final_attention_mask: {final_attention_mask}")
-        print(f"final_enc.shape: {final_enc.shape}")
+        # if attention_mask is not None:
+        #     print(f"  attention_mask.shape: {attention_mask.shape}")
+        #     print(f"  attention_mask.device: {attention_mask.device}")
+        #     print(f"  attention_mask.max(): {attention_mask.max()}, attention_mask.min(): {attention_mask.min()}")
+        # else:
+        #     print(f"  attention_mask: None")
+        # # print(f"padded_doc_mask: {padded_doc_mask}")
+        # # print(f"final_attention_mask: {final_attention_mask}")
+        # print(f"final_enc.shape: {final_enc.shape}")
 
         pred_answers = None
         pred_conf = None
@@ -260,28 +267,32 @@ class DocVQAQuestionDrivenDataset(Dataset):
         doc_mask = doc_data["attention_mask"].squeeze(0)      # [seq_len]
 
         # Load OCR data
-        words, boxes = self.load_ocr_data(image_stem)
+        words, normalized_boxes = self.load_ocr_data(image_stem)
 
         # Convert Microsoft OCR bbox format [x1, y1, x2, y2, x3, y3, x4, y4] to [x1, y1, x3, y3]
-        converted_boxes = []
-        unexpected_format_count = 0  # Counter for unexpected formats
-        for bbox in boxes:
-            if len(bbox) == 8:
-                x1, y1, x2, y2, x3, y3, x4, y4 = bbox
-                converted_box = [x1, y1, x3, y3]
-            elif len(bbox) == 4:
-                # If bbox is already in [x1, y1, x2, y2] format
-                converted_box = bbox
-            else:
-                # Handle unexpected bbox formats
-                converted_box = [0, 0, 0, 0]
-                unexpected_format_count += 1  
-            converted_boxes.append(converted_box)
-        # Debugging: Print some sample converted boxes
-        if idx < 5:  # Limit to first 5 samples for brevity
-            print(f"Sample {idx}: Original bbox length={len(boxes[idx])}, Converted bbox={converted_boxes[idx]}")
+        # converted_boxes = []
+        # unexpected_format_count = 0  # Counter for unexpected formats
+        # for bbox in boxes:
+        #     if len(bbox) == 8:
+        #         x1, y1, x2, y2, x3, y3, x4, y4 = bbox
+        #         converted_box = [x1, y1, x3, y3]
+        #     elif len(bbox) == 4:
+        #         # If bbox is already in [x1, y1, x2, y2] format
+        #         converted_box = bbox
+        #     else:
+        #         # Handle unexpected bbox formats
+        #         converted_box = [0, 0, 0, 0]
+        #         unexpected_format_count += 1  
+        #     converted_boxes.append(converted_box)
+        # # Debugging: Print some sample converted boxes
+        # if idx < 5:  # Limit to first 5 samples for brevity
+        #     print(f"Sample {idx}: Original bbox length={len(boxes[idx])}, Converted bbox={converted_boxes[idx]}")
         
-        print(f"Number of unexpected bounding box formats: {unexpected_format_count}")
+        # print(f"Number of unexpected bounding box formats: {unexpected_format_count}")
+
+        # (Optional) For debugging, print the normalized boxes:
+        # if idx < 5:
+        #     print(f"Sample {idx}: Normalized OCR boxes: {normalized_boxes[:5]}")
 
         # Load Image
         image_tensor = None
@@ -304,14 +315,49 @@ class DocVQAQuestionDrivenDataset(Dataset):
             "doc_embeds": [doc_embeds],           # List of one doc embedding tensor
             "doc_masks": [doc_mask],              # List of one doc mask tensor
             "words": [words],                      # List of lists of strings
-            "boxes": [converted_boxes],            # List of lists of converted bounding boxes [x1, y1, x2, y2]
+            "boxes": [normalized_boxes],            # List of lists of converted bounding boxes [x1, y1, x2, y2]
             "images": [image_tensor]               # List of one image tensor or None
         }
 
+    # def load_ocr_data(self, stem):
+    #     """
+    #     Reads spdocvqa_ocr/<stem>.json and extracts words and bounding boxes.
+    #     Returns (list_of_words, list_of_bboxes)
+    #     """
+    #     if not self.ocr_dir:
+    #         return [], []
+
+    #     ocr_path = Path(self.ocr_dir) / f"{stem}.json"
+    #     if not ocr_path.exists():
+    #         print(f"[Warning] OCR file not found: {ocr_path}")
+    #         return [], []
+
+    #     with open(ocr_path, "r") as f:
+    #         ocr_data = json.load(f)
+
+    #     recognition_results = ocr_data.get("recognitionResults", [])
+    #     if len(recognition_results) > 0:
+    #         page_info = recognition_results[0]
+    #         img_width = page_info.get("width", 1)
+    #         img_height = page_info.get("height", 1)
+    #         print(f"Image dimensions for {stem}: width={img_width}, height={img_height}")
+    #     else:
+    #         img_width, img_height = 1, 1  # Default values
+    #     all_words = []
+    #     all_boxes = []
+    #     for page_info in recognition_results:
+    #         lines = page_info.get("lines", [])
+    #         for line in lines:
+    #             words = line.get("words", [])
+    #             for word in words:
+    #                 all_words.append(word.get("text", ""))
+    #                 all_boxes.append(word.get("boundingBox", [0, 0, 0, 0, 0, 0, 0, 0]))
+
+    #     return all_words, all_boxes
     def load_ocr_data(self, stem):
         """
         Reads spdocvqa_ocr/<stem>.json and extracts words and bounding boxes.
-        Returns (list_of_words, list_of_bboxes)
+        Returns (list_of_words, list_of_normalized_bboxes)
         """
         if not self.ocr_dir:
             return [], []
@@ -325,6 +371,16 @@ class DocVQAQuestionDrivenDataset(Dataset):
             ocr_data = json.load(f)
 
         recognition_results = ocr_data.get("recognitionResults", [])
+        
+        # Retrieve image dimensions from the first recognition result.
+        if len(recognition_results) > 0:
+            page_info = recognition_results[0]
+            img_width = page_info.get("width", 1)
+            img_height = page_info.get("height", 1)
+            # print(f"Image dimensions for {stem}: width={img_width}, height={img_height}")
+        else:
+            img_width, img_height = 1, 1  # fallback defaults
+
         all_words = []
         all_boxes = []
         for page_info in recognition_results:
@@ -333,8 +389,25 @@ class DocVQAQuestionDrivenDataset(Dataset):
                 words = line.get("words", [])
                 for word in words:
                     all_words.append(word.get("text", ""))
-                    all_boxes.append(word.get("boundingBox", [0, 0, 0, 0, 0, 0, 0, 0]))
+                    raw_bbox = word.get("boundingBox", [0, 0, 0, 0, 0, 0, 0, 0])
+                    # Convert Microsoft OCR bbox format to [x1, y1, x3, y3]
+                    if len(raw_bbox) == 8:
+                        x1, y1, x2, y2, x3, y3, x4, y4 = raw_bbox
+                        box = [x1, y1, x3, y3]
+                    elif len(raw_bbox) == 4:
+                        box = raw_bbox
+                    else:
+                        box = [0, 0, 0, 0]
+                    # Normalize: convert raw pixel values to a [0, 1] range
+                    normalized_box = [
+                        float(box[0]) / img_width,
+                        float(box[1]) / img_height,
+                        float(box[2]) / img_width,
+                        float(box[3]) / img_height,
+                    ]
+                    all_boxes.append(normalized_box)
         return all_words, all_boxes
+
 
 
 ###############################################################################
@@ -354,9 +427,9 @@ def docvqa_collate_fn(batch):
     images = [b["images"][0] for b in batch]
 
     # After processing boxes
-    print("Batch bbox shapes and sample values:")
-    for i, box in enumerate(boxes):
-        print(f"  Sample {i}: Number of boxes={len(box)}, First bbox={box[0] if len(box) > 0 else 'N/A'}")
+    # print("Batch bbox shapes and sample values:")
+    # for i, box in enumerate(boxes):
+    #     print(f"  Sample {i}: Number of boxes={len(box)}, First bbox={box[0] if len(box) > 0 else 'N/A'}")
     
 
 
@@ -370,6 +443,15 @@ def docvqa_collate_fn(batch):
         else:
             # Create a dummy tensor if image is None
             processed_images.append(torch.zeros(3, 224, 224))  # Example size
+    
+        # After processing images
+    # print("\n[docvqa_collate_fn] Batch summary:")
+    # print(f"  Questions count: {len(questions)}")
+    # print(f"  Document Embeds sample shape: {doc_embeds[0].shape if doc_embeds else 'N/A'}")
+    # print(f"  Document Masks sample shape: {doc_masks[0].shape if doc_masks else 'N/A'}")
+    # print(f"Number of valid tokens in document mask (sample 0): {doc_masks[0].sum().item()}")
+    # print(f"  Images sample shape: {processed_images[0].shape if processed_images[0] is not None else 'N/A'}")
+
 
     return {
         "questions": questions,            # List of strings
@@ -392,19 +474,30 @@ def train_epoch(data_loader, model_wrapper, optimizer, scheduler, logger=None, e
 
     for step, batch in enumerate(tqdm(data_loader, desc="Training", unit="batch")):
         # Debugging input batch
-        print("Debugging batch before forward pass:")
-        for key, value in batch.items():
-            if isinstance(value, torch.Tensor):
-                print(f"  {key}: shape={value.shape}, device={value.device}, max={value.max()}, min={value.min()}")
+        # print("Debugging batch before forward pass:")
+        # for key, value in batch.items():
+        #     if isinstance(value, torch.Tensor):
+        #         print(f"  {key}: shape={value.shape}, device={value.device}, max={value.max()}, min={value.min()}")
 
+        # # Debugging input batch
+        # print("\n--- Debugging Batch Input ---")
+        # print("Questions:", batch["questions"])
+        # print("Target Answers:", batch["target_answers"])
+        # print("Document Embeds: Shapes:", [e.shape for e in batch["doc_embeds"]])
+        # print("Document Masks: Shapes:", [m.shape for m in batch["doc_masks"]])
         outputs, pred_answers, _ = model_wrapper.forward(batch, return_pred_answer=True)
 
         # Debugging outputs
-        print("Debugging outputs after forward pass:")
-        if outputs.loss is not None:
-            print(f"  Loss value: {outputs.loss.item()}")
-        if outputs.logits is not None:
-            print(f"  Logits shape: {outputs.logits.shape}")
+        # print("Debugging outputs after forward pass:")
+        # if outputs.loss is not None:
+        #     print(f"  Loss value: {outputs.loss.item()}")
+        # if outputs.logits is not None:
+        #     print(f"  Logits shape: {outputs.logits.shape}")
+        
+        # Validate Attention Masking and Encoding Alignment
+        # print("\n--- Attention Mask and Encoding Alignment ---")
+        # print(f"Attention Mask Shape: {batch['doc_masks'][0].shape}")
+        # print(f"Final Encodings Shape: {outputs.encoder_last_hidden_state.shape}")
 
         loss = outputs.loss
         if loss.dim() > 0:

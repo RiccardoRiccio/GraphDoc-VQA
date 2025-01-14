@@ -1,37 +1,55 @@
-import torch
-from transformers import T5ForConditionalGeneration
+import os
+import numpy as np
 
-def check_t5_parameter_status(model_name="t5-base", freeze_encoder=True):
-    # Load T5 model
-    model = T5ForConditionalGeneration.from_pretrained(model_name)
+def main():
+    # Path to your imdb_train.npy file (adjust the path if needed)
+    imdb_file = "/SSD2/Datasets/DocVQA/Task1/pythia_data/imdb/docvqa/new_imdb_train.npy"
     
-    if freeze_encoder:
-        # Freeze the encoder and shared embeddings
-        for p in model.encoder.parameters():
-            p.requires_grad = False
-        # for p in model.shared.parameters():  # Embedding layer
-        #     p.requires_grad = False
+    # Load the numpy file; allow_pickle is required as the file contains a complex structure.
+    data = np.load(imdb_file, allow_pickle=True)
+    
+    # The first element is a header, and the rest are records.
+    header = data[0]
+    records = data[1:]
+    
+    print("Header:")
+    print(header)
+    print(f"Total number of records: {len(records)}")
+    
+    # How many records you want to inspect:
+    num_to_inspect = 5
 
-        # Optionally, freeze lm_head (final linear layer) if needed
-        # for p in model.lm_head.parameters():
-            # p.requires_grad = True
-            # print("lm head p: ", p)
+    for i, record in enumerate(records[:num_to_inspect]):
+        print("\n" + "="*40)
+        print(f"Record {i+1}")
+        
+        # Print available keys
+        print("Keys available:", record.keys())
+        
+        # Get OCR boxes using the key "ocr_normalized_boxes"
+        if "ocr_normalized_boxes" in record:
+            boxes = record["ocr_normalized_boxes"]
+            boxes = np.array(boxes)
+            print(f"Boxes shape: {boxes.shape}")
+            
+            # Compute overall statistics of the bounding boxes:
+            print("Min value in boxes:", boxes.min())
+            print("Max value in boxes:", boxes.max())
+            print("Mean value in boxes:", boxes.mean())
+            
+            # Optionally, print the first few boxes
+            print("First 5 boxes:")
+            print(boxes[:5])
+        else:
+            print("No 'ocr_normalized_boxes' key found in this record.")
 
-    # Print the status of each parameter
-    print("\n====== PARAMETER FREEZING STATUS ======\n")
-    for name, param in model.named_parameters():
-        status = "TRAINABLE" if param.requires_grad else "FROZEN"
-        print(f"{name.ljust(70)} -> {status}")
-    
-    # Count frozen and trainable parameters
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    frozen_params = total_params - trainable_params
-    
-    print("\n====== SUMMARY ======\n")
-    print(f"Total Parameters: {total_params:,}")
-    print(f"Trainable Parameters: {trainable_params:,} ({(trainable_params / total_params) * 100:.2f}%)")
-    print(f"Frozen Parameters: {frozen_params:,} ({(frozen_params / total_params) * 100:.2f}%)")
+        # Optionally, also print OCR tokens to see context
+        if "ocr_tokens" in record:
+            tokens = record["ocr_tokens"]
+            print("Number of OCR tokens:", len(tokens))
+            print("First 10 OCR tokens:", tokens[:10])
+        else:
+            print("No 'ocr_tokens' key found in this record.")
 
 if __name__ == "__main__":
-    check_t5_parameter_status("rubentito/vt5-base-spdocvqa", freeze_encoder=True)
+    main()

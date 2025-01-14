@@ -19,13 +19,13 @@ training_parameters:
   warmup_iterations: 1000
 
 dataset_paths:
-  # train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
-  # val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
   # train_qas_path: /data2/users/rriccio/spdocvqa_qas/train_v1.0_withQT.json
   # val_qas_path: /data2/users/rriccio/spdocvqa_qas/val_v1.0_withQT.json
 
-  train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
-  val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  # train_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
+  # val_embeddings_dir: /data2/users/rriccio/spdocvqa_embeddings_sample_original
   train_qas_path: /data2/users/rriccio/sample_train_qa.json
   val_qas_path: /data2/users/rriccio/sample_val_qa.json
 
@@ -40,7 +40,7 @@ dataset_paths:
 visual_module:
   model: 'dit'  # 'vit' / 'dit'
   finetune: false
-  model_weights: 'google/vit-base-patch16-224-in21k' # microsoft/dit-base-finetuned-rvlcdip 'google/vit-base-patch16-224-in21k' # 3) 'microsoft/dit-base-finetuned-rvlcdip' # 1) 'microsoft/dit-base-finetuned-rvlcdip'  # 2) 'google/vit-base-patch16-224-in21k' / 'microsoft/dit-base-finetuned-rvlcdip'
+  model_weights:    'microsoft/dit-base-finetuned-rvlcdip'  # 2) 'google/vit-base-patch16-224-in21k' / 'microsoft/dit-base-finetuned-rvlcdip'
 
 
 
